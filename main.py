@@ -8,6 +8,7 @@ from tqdm import tqdm
 import cubemap2equirectangular as equirectangular
 import equirectangular2fisheye as fisheye
 import tiles2cubemap as cubemap
+from helpers import crop90 as crop
 
 # Global variable to track the number of parent files processed
 parent_file_count = 0
@@ -84,6 +85,10 @@ def process_stitched_images(data_dir):
                 # Save equirectangular image
                 output_img.save(output_path)
 
+                output_path_90 = os.path.join(output_dir, file.replace("_cubemap_image.jpg", "_equirectangular_90.jpg"))
+
+                crop.crop_image_upper_half(output_path, output_path_90, quality=100)
+
                 # Increment the parent file count
                 parent_file_count += 1
 
@@ -101,7 +106,7 @@ def process_stitched_images(data_dir):
     # Calculate total time elapsed
     end_time = time.time()
     total_time = end_time - start_time
-    print(f"Total time elapsed: {total_time} seconds")
+    print(f"Total time elapsed for converting cubemaps into equirectangular images: {total_time} seconds")
 
 
 # Example usage:
@@ -112,3 +117,5 @@ cubemap.stitch_images_corrected(data_dir)
 process_stitched_images(data_dir)
 
 fisheye.process_equirectangular_images(data_dir)
+
+print("All processes are done.")
