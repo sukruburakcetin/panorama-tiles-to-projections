@@ -1,8 +1,20 @@
 import os
+import time
 
 import cv2
 import numpy as np
 from tqdm import tqdm
+
+from helpers import make_transparent as mt
+
+# Global variable to track the number of parent files processed
+parent_file_count = 0
+
+# Global variable to track the starting time
+start_time = None
+
+# Global variable to track the total number of parent files
+total_parent_files = 0
 
 
 # Function to convert equirectangular to fisheye with tqdm
@@ -52,15 +64,34 @@ def panoramic_to_fisheye(panoramic_image, file_name):
 
 # Function to convert equirectangular to fisheye and save fisheye images
 def process_equirectangular_images(data_dir):
+    global parent_file_count  # Access the global counter variable
+    global start_time  # Access the global start time variable
+    global total_parent_files  # Access the global total parent files variable
+
+    # Initialize the start time
+    start_time = time.time()
+
+    # Traverse through directories containing stitched images
+    for root, dirs, files in os.walk(data_dir):
+        for file in files:
+            if file.endswith("_equirectangular_90.jpg"):  # Check if it's a stitched image
+                # Count the total number of parent files
+                total_parent_files += 1
+
+    # Reset the parent file count
+    parent_file_count = 0
+
     # Traverse through directories containing equirectangular images
     for root, dirs, files in os.walk(data_dir):
         for file in files:
-            if file.endswith("_equirectangular.jpg"):  # Check if it's an equirectangular image
+            if file.endswith("_equirectangular_90.jpg"):  # Check if it's an equirectangular image
+                # Print the parent file count to the console
+                print(f"\nProcessing parent file {parent_file_count + 1}/{total_parent_files}")
                 # Construct paths
                 input_path = os.path.join(root, file)
                 output_dir = os.path.join(root, "fisheye_image")
                 os.makedirs(output_dir, exist_ok=True)
-                output_path = os.path.join(output_dir, file.replace("_equirectangular.jpg", "_fisheye.jpg"))
+                output_path = os.path.join(output_dir, file.replace("_equirectangular_90.jpg", "_fisheye.png"))
 
                 # Open equirectangular image
                 equirectangular_img = cv2.imread(input_path)
@@ -68,8 +99,25 @@ def process_equirectangular_images(data_dir):
                 # Convert equirectangular to fisheye
                 fisheye_img = panoramic_to_fisheye(equirectangular_img, file)
 
-                # Save fisheye image
-                cv2.imwrite(output_path, fisheye_img)
+                transparent_fisheye_img = mt.remove_background(fisheye_img)
 
-                # Calculate time statistics
-                print(f"\nProcessing {file}")
+                # Save fisheye image
+                cv2.imwrite(output_path, transparent_fisheye_img)
+
+                # Increment the parent file count
+                parent_file_count += 1
+
+                # Calculate the average time taken per file
+                time_elapsed = time.time() - start_time
+                avg_time_per_file = time_elapsed / parent_file_count
+
+                # Calculate the remaining time
+                remaining_files = total_parent_files - parent_file_count
+                remaining_time = avg_time_per_file * remaining_files
+
+                # Print the estimated remaining time to the console
+                print(f"Estimated remaining time: {remaining_time} seconds")
+    # Calculate total time elapsed
+    end_time = time.time()
+    total_time = end_time - start_time
+    print(f"Total time elapsed for converting images into fisheye: {total_time} seconds")
